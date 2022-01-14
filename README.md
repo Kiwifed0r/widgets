@@ -1,9 +1,15 @@
-# Widget zur Anzeige des [Ernteanteils](https://app.kartoffelkombinat.de) des [Kartoffelkombinats](https://www.kartoffelkombinat.de) für iOS ([Scriptable](https://scriptable.app))
+# Gemüseherold
+Ein widget zur Anzeige des [Ernteanteils](https://app.kartoffelkombinat.de) des [Kartoffelkombinats](https://www.kartoffelkombinat.de) für iOS ([Scriptable](https://scriptable.app))
 
 ## Screenshots
+![Widget Screenshot](screenshots/gemueseherold/widget.png)
 
 ## Installation
 - [Scriptable](https://scriptable.app) installieren
-- 
+- Link folgend: 
+- Script-Text kopieren
+- Scriptable öffnen, neues Script erstellen und kopierten Text einfügen.
+- Widget dem Homescreen hinzufügen.
 
-## Einstellungen
+## Konfiguration
+Standardmäßig wird der normale Ernteanteil angezeigt. Bei Bedarf kann auch der kleine Ernteanteil angezeigt werden. Hierfür:
