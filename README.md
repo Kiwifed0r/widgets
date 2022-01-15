@@ -12,6 +12,6 @@ Ein widget zur Anzeige des [Ernteanteils](https://app.kartoffelkombinat.de) des 
 - Widget dem Homescreen hinzufügen.
 
 ## Konfiguration
-Standardmäßig wird der normale Ernteanteil angezeigt. Bei Bedarf kann auch der kleine Ernteanteil angezeigt werden. Hierfür die Widgetkonfiguration aufrufen und bei Parameter ```klein``` eingeben, siehe Screenshot.
+Standardmäßig wird der normale Ernteanteil angezeigt. Bei Bedarf kann auch der kleine Ernteanteil angezeigt werden. Hierfür das Widget auf dem Homescreen lange drücken und ```Scriptable bearbeiten``` wählen um die Widgetkonfiguration zu öffnen. Nun bei Parameter ```klein``` eingeben, siehe Screenshot.
 
 ![Konfiguration Screenshot](screenshots/gemueseherold/config.png)
