@@ -7,6 +7,28 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
 // icon-color: deep-green; icon-glyph: bus-alt;
+
+/**
+ * Author: Frederik Arnold
+ * Github: https://github.com/Kiwifed0r/widgets
+ * 
+ * Copyright 2022 Frederik Arnold
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+
+ *   http://www.apache.org/licenses/LICENSE-2.0
+
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ */
+
+
 class WeekInfo {
   
   constructor(date, harvestId) {
@@ -44,6 +66,10 @@ const DASHBOARD_URL = 'https://app.kartoffelkombinat.de/api/dashboard';
 const SHARE_URL = 'https://app.kartoffelkombinat.de/api/shares/';
 const IMAGE_URL = 'https://app.kartoffelkombinat.de/api/images/';
 
+const WEEK_INFO_CACHE_NAME = 'week_info';
+const VEGETABLES_CACHE_NAME = 'vegetables';
+const CACHE_LIMIT_IN_SEC = 60 * 60;
+
 const param = args.widgetParameter;
 let shareType = NORMAL_SHARE_TYPE;
 
@@ -61,6 +87,7 @@ try {
   weekInfo = await getWeekInfo();
   vegetables = await getVegetables(weekInfo.harvestId, shareType);
 } catch(error) {
+  console.error(error);
   widget = await createErrorWidget(error);
 }
 
@@ -83,7 +110,7 @@ async function createErrorWidget(error) {
 
 async function createWidget(vegetables) {
   const widget = new ListWidget();
-  widget.setPadding(10, 15, 10, 10);
+  widget.setPadding(8, 16, 8, 8);
 
   const titleWidget = widget.addText('Gemüseherold');
   titleWidget.font = FONT_TITLE;
@@ -94,7 +121,7 @@ async function createWidget(vegetables) {
   weekContainerWidget.addSpacer(6);
 
   const weekWidget = weekContainerWidget.addText(weekInfo.date);
-  weekWidget.font = FONT_SMALL_TEXT;
+  weekWidget.font = FONT_TINY_TEXT;
   weekWidget.textColor = COLOR_ORANGE;
 
   const container = widget.addStack();
@@ -111,7 +138,7 @@ async function createWidget(vegetables) {
   stack2.layoutVertically();
   
   if (vegetables.length > 0) {
-    for (let i = 0; i < vegetables.length && i < 8; i++) {
+    for (let i = 0; i < vegetables.length && i < 7; i++) {
       const vegetable = vegetables[i];      
 
       let name = vegetable.name;
@@ -135,9 +162,11 @@ async function createWidget(vegetables) {
 
       if (isAdditional === 1) {
         vegetableNameWidget.textColor = COLOR_GREY;
+      }  
+      
+      if (i < vegetables.length - 1) {
+        stack2.addSpacer(1);
       }
-
-      stack2.addSpacer(1);
     }
   } else {
     widget.addSpacer();
@@ -147,7 +176,9 @@ async function createWidget(vegetables) {
     noVegetablesWidget.centerAlignText();
   }
   
-  widget.addSpacer();
+  if (vegetables.length < 7) {
+    widget.addSpacer();
+  }
 
   const footerWidget = widget.addStack();
   footerWidget.layoutHorizontally();
@@ -168,16 +199,20 @@ async function createWidget(vegetables) {
 }
 
 async function getWeekInfo() {
-  
   const url = DASHBOARD_URL;
   const request = new Request(url);
+  const nowInSec = Math.floor(Date.now() / 1000);
 
-  let result = null;
+  let result = getFromCache(WEEK_INFO_CACHE_NAME);
 
-  try {
-    result = await request.loadJSON();
-  } catch (error) {
-    throw 'Es ist ein Fehler aufgetreten 😕';
+  if (result == null || (nowInSec - result.lastUpdated > CACHE_LIMIT_IN_SEC)) {
+    try {
+      result = await request.loadJSON();
+      result.lastUpdated = nowInSec;
+      saveToCache(WEEK_INFO_CACHE_NAME, result);
+    } catch (error) {
+      throw 'Es ist ein Fehler aufgetreten 😕';
+    }
   }
   
   if (result.next && result.next.date && result.next.harvest_id) {
@@ -190,16 +225,21 @@ async function getWeekInfo() {
 }
   
 async function getVegetables(harvestId, shareType) {
-  
   const url = SHARE_URL + shareType + '/' + harvestId;
   const request = new Request(url);
+  const nowInSec = Math.floor(Date.now() / 1000);
 
-  let result = null;
+  let result = getFromCache(VEGETABLES_CACHE_NAME);
 
-  try {
-    result = await request.loadJSON();
-  } catch (error) {
-    throw 'Es ist ein Fehler aufgetreten 😕';
+  if (result == null || (result.share_type !== shareType) || (nowInSec - result.lastUpdated > CACHE_LIMIT_IN_SEC)) {
+    try {
+      console.log('load from server');
+      result = await request.loadJSON();
+      result.lastUpdated = nowInSec;
+      saveToCache(VEGETABLES_CACHE_NAME, result);
+    } catch (error) {
+      throw 'Es ist ein Fehler aufgetreten 😕';
+    }
   }
   
   const vegetables = [];
@@ -221,22 +261,55 @@ async function getVegetables(harvestId, shareType) {
   return vegetables;
 }
 
-async function getImage(imageId) {
-    let fileManager = FileManager.local();
-    let dir = fileManager.documentsDirectory();
-    let path = fileManager.joinPath(dir, imageId + '.png');
+function saveToCache(name, jsonStruct) {
+  const fileManager = FileManager.local();
+  const rootDir = fileManager.documentsDirectory();
+  const dir = fileManager.joinPath(rootDir, 'gemueseherold');
 
-    if (fileManager.fileExists(path)) {
-        return fileManager.readImage(path);
-    } else {
-        try {
-          let iconImage = await loadImage(IMAGE_URL + imageId);
-          fileManager.writeImage(path, iconImage);
-          return iconImage;
-        } catch (err) {
-          throw err;
-        }
-    }
+  if (!fileManager.fileExists(dir)) {
+    fileManager.createDirectory(dir);
+  }
+
+  const path = fileManager.joinPath(dir, name + '.json');
+  fileManager.writeString(path, JSON.stringify(jsonStruct));
+}
+
+function getFromCache(name) {
+  const fileManager = FileManager.local();
+  const rootDir = fileManager.documentsDirectory();
+  const dir = fileManager.joinPath(rootDir, 'gemueseherold');
+  const path = fileManager.joinPath(dir, name + '.json');
+
+  if (fileManager.fileExists(path)) {
+      const fileContent = fileManager.readString(path);
+      return JSON.parse(fileContent);
+  }
+
+  return null;
+}
+
+async function getImage(imageId) {
+  const fileManager = FileManager.local();
+  const rootDir = fileManager.documentsDirectory();
+  const dir = fileManager.joinPath(rootDir, 'gemueseherold');
+
+  if (!fileManager.fileExists(dir)) {
+    fileManager.createDirectory(dir);
+  }
+
+  const path = fileManager.joinPath(dir, imageId + '.png');
+
+  if (fileManager.fileExists(path)) {
+      return fileManager.readImage(path);
+  } else {
+      try {
+        let iconImage = await loadImage(IMAGE_URL + imageId);
+        fileManager.writeImage(path, iconImage);
+        return iconImage;
+      } catch (err) {
+        throw err;
+      }
+  }
 }
 
 async function loadImage(imageUrl) {
