@@ -6,7 +6,7 @@ Ein widget zur Anzeige des [Ernteanteils](https://app.kartoffelkombinat.de) des 
 
 ## Installation
 - [Scriptable](https://scriptable.app) installieren
-- Link folgen: https://raw.githubusercontent.com/Kiwifed0r/widgets/main/Gemüseherold.js
+- Link folgen: https://gitlab.kartoffelkombinat.de/Kiwifed0r/gemueseherold/-/raw/main/Gemüseherold.js
 - Script-Text kopieren
 - Scriptable öffnen, neues Script erstellen und kopierten Text einfügen.
 - Widget dem Homescreen hinzufügen.
