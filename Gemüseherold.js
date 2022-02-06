@@ -31,9 +31,11 @@
 
 class WeekInfo {
   
-  constructor(date, harvestId) {
+  constructor(date, harvestId, week, year) {
     this.date = date;
     this.harvestId = harvestId;
+    this.week = week;
+    this.year = year;
   }
 }
 
@@ -65,6 +67,7 @@ const NORMAL_SHARE_TYPE = 1;
 const DASHBOARD_URL = 'https://app.kartoffelkombinat.de/api/dashboard';
 const SHARE_URL = 'https://app.kartoffelkombinat.de/api/shares/';
 const IMAGE_URL = 'https://app.kartoffelkombinat.de/api/images/';
+const LINK_URL = 'https://app.kartoffelkombinat.de/';
 
 const WEEK_INFO_CACHE_NAME = 'week_info';
 const VEGETABLES_CACHE_NAME = 'vegetables';
@@ -97,6 +100,12 @@ if (vegetables != null) {
 
 if(!config.runsInWidget) {
   await widget.presentSmall();
+}
+
+if (weekInfo) {
+  widget.url = LINK_URL + 'ernteanteile/' + shareType + '/' + weekInfo.year + '/' + weekInfo.week;
+} else {
+  widget.url = LINK_URL;
 }
 
 Script.setWidget(widget);
@@ -216,9 +225,9 @@ async function getWeekInfo() {
   }
   
   if (result.next && result.next.date && result.next.harvest_id) {
-    return new WeekInfo(result.next.date, result.next.harvest_id);
+    return new WeekInfo(result.next.date, result.next.harvest_id, result.next.week, result.next.year);
   } else if (result.this) {
-    return new WeekInfo(result.this.date, result.this.harvest_id);
+    return new WeekInfo(result.this.date, result.this.harvest_id, result.this.week, result.this.year);
   }
   
   throw 'Info konnte nicht geladen werden!';
