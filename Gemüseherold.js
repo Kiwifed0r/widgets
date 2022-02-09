@@ -71,7 +71,7 @@ const LINK_URL = 'https://app.kartoffelkombinat.de/';
 
 const WEEK_INFO_CACHE_NAME = 'week_info';
 const VEGETABLES_CACHE_NAME = 'vegetables';
-const CACHE_LIMIT_IN_SEC = 60 * 60;
+const CACHE_LIMIT_IN_SEC = 60 * 60 * 6;
 
 const param = args.widgetParameter;
 let shareType = NORMAL_SHARE_TYPE;
@@ -90,7 +90,6 @@ try {
   weekInfo = await getWeekInfo();
   vegetables = await getVegetables(weekInfo.harvestId, shareType);
 } catch(error) {
-  console.error(error);
   widget = await createErrorWidget(error);
 }
 
@@ -158,8 +157,11 @@ async function createWidget(vegetables) {
       const isAdditional = vegetable.isAdditional;
 
       const image = await getImage(iconId);
-      const imageWidget = stack1.addImage(image);
-      imageWidget.imageSize = new Size(15, 15);
+      
+      if (image) {
+        const imageWidget = stack1.addImage(image);
+        imageWidget.imageSize = new Size(15, 15);
+      }
       
       if (isAdditional === 1 && info) {
         name += ' (' + info + ')';
@@ -208,15 +210,12 @@ async function createWidget(vegetables) {
 }
 
 async function getWeekInfo() {
-  const url = DASHBOARD_URL;
-  const request = new Request(url);
   const nowInSec = Math.floor(Date.now() / 1000);
-
   let result = getFromCache(WEEK_INFO_CACHE_NAME);
 
   if (result == null || (nowInSec - result.lastUpdated > CACHE_LIMIT_IN_SEC)) {
     try {
-      result = await request.loadJSON();
+      result = await loadJsonFromServer(DASHBOARD_URL);
       result.lastUpdated = nowInSec;
       saveToCache(WEEK_INFO_CACHE_NAME, result);
     } catch (error) {
@@ -234,16 +233,13 @@ async function getWeekInfo() {
 }
   
 async function getVegetables(harvestId, shareType) {
-  const url = SHARE_URL + shareType + '/' + harvestId;
-  const request = new Request(url);
   const nowInSec = Math.floor(Date.now() / 1000);
-
   let result = getFromCache(VEGETABLES_CACHE_NAME);
 
   if (result == null || (result.share_type !== shareType) || (nowInSec - result.lastUpdated > CACHE_LIMIT_IN_SEC)) {
     try {
-      console.log('load from server');
-      result = await request.loadJSON();
+      const url = SHARE_URL + shareType + '/' + harvestId;
+      result = await loadJsonFromServer(url);
       result.lastUpdated = nowInSec;
       saveToCache(VEGETABLES_CACHE_NAME, result);
     } catch (error) {
@@ -270,6 +266,11 @@ async function getVegetables(harvestId, shareType) {
   return vegetables;
 }
 
+async function loadJsonFromServer(url) {
+  const request = new Request(url);
+  return await request.loadJSON();
+}
+
 function saveToCache(name, jsonStruct) {
   const fileManager = FileManager.local();
   const rootDir = fileManager.documentsDirectory();
@@ -291,7 +292,12 @@ function getFromCache(name) {
 
   if (fileManager.fileExists(path)) {
       const fileContent = fileManager.readString(path);
-      return JSON.parse(fileContent);
+      
+      try {
+        return JSON.parse(fileContent);
+      } catch (err) {
+        fileManager.remove(path);
+      }
   }
 
   return null;
@@ -309,23 +315,23 @@ async function getImage(imageId) {
   const path = fileManager.joinPath(dir, imageId + '.png');
 
   if (fileManager.fileExists(path)) {
-      return fileManager.readImage(path);
+      try {
+        return fileManager.readImage(path);
+      } catch (err) {
+        fileManager.remove(path);
+      }
   } else {
       try {
         let iconImage = await loadImage(IMAGE_URL + imageId);
         fileManager.writeImage(path, iconImage);
         return iconImage;
       } catch (err) {
-        throw err;
       }
   }
+  return null;
 }
 
 async function loadImage(imageUrl) {
   const req = new Request(imageUrl);
-  try {
-    return await req.loadImage();
-  } catch (err) {
-    throw err;
-  }
+  return await req.loadImage();
 }
